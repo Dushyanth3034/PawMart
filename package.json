@@ -1,0 +1,22 @@
+{
+  "name": "pawmart-root",
+  "version": "1.0.0",
+  "description": "PawMart - Multi-Vendor Pet Products & Pet Care Services Marketplace",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm run install:backend && npm run install:frontend",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "db:migrate": "cd backend && npx prisma migrate dev",
+    "db:studio": "cd backend && npx prisma studio",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build"
+  },
+  "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
+    "@react-oauth/google": "^0.13.5",
+    "concurrently": "^8.2.2"
+  }
+}

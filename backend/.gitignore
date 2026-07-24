@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+build/
+*.log
+scratch*.js
+test-*.js
+clean_demo_data.js
