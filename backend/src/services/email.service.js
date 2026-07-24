@@ -1,9 +1,14 @@
 import { BrevoClient } from '@getbrevo/brevo';
 import { config } from '../config/index.js';
 
-const brevo = new BrevoClient({
-  apiKey: config.brevoApiKey
-});
+function getBrevoClient() {
+  const apiKey = process.env.BREVO_API_KEY || config.brevoApiKey;
+  if (!apiKey) {
+    console.error('[Brevo Error] Brevo API key is not configured in environment variables.');
+    throw new Error('Brevo API key is not configured.');
+  }
+  return new BrevoClient({ apiKey });
+}
 
 export class EmailService {
   /**
@@ -11,11 +16,15 @@ export class EmailService {
    */
   static async sendHtmlEmail(to, subject, html) {
     try {
+      const brevo = getBrevoClient();
+      const senderName = process.env.BREVO_SENDER_NAME || config.brevoSenderName || 'PawMart Support';
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || config.brevoSenderEmail || 'pawmart.app@gmail.com';
+
       console.log(`Sending email via Brevo to ${to}: "${subject}"`);
       const response = await brevo.transactionalEmails.sendTransacEmail({
         subject,
         htmlContent: html,
-        sender: { name: config.brevoSenderName, email: config.brevoSenderEmail },
+        sender: { name: senderName, email: senderEmail },
         to: [{ email: to }]
       });
 
@@ -23,8 +32,8 @@ export class EmailService {
 
       return { success: true, data: response };
     } catch (error) {
-      console.error(`Failed to send email to ${to} via Brevo:`, error);
-      const errMsg = error.response?.body?.message || error.message || 'Something went wrong. Please try again.';
+      console.error(`Failed to send email to ${to} via Brevo:`, error.message || error);
+      const errMsg = error.response?.body?.message || error.message || 'Failed to send email via Brevo.';
       throw new Error(errMsg);
     }
   }

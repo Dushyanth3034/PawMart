@@ -13,8 +13,6 @@ const requiredEnv = [
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
   'BREVO_API_KEY',
-  'BREVO_SENDER_NAME',
-  'BREVO_SENDER_EMAIL',
   'GOOGLE_CLIENT_ID',
 ];
 
@@ -32,8 +30,8 @@ export const config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   brevoApiKey: process.env.BREVO_API_KEY,
-  brevoSenderName: process.env.BREVO_SENDER_NAME,
-  brevoSenderEmail: process.env.BREVO_SENDER_EMAIL,
+  brevoSenderName: process.env.BREVO_SENDER_NAME || 'PawMart Support',
+  brevoSenderEmail: process.env.BREVO_SENDER_EMAIL || 'pawmart.app@gmail.com',
   googleClientId: process.env.GOOGLE_CLIENT_ID,
   platformCommissionRate: parseFloat(process.env.PLATFORM_COMMISSION_RATE || '0.10'),
 };
