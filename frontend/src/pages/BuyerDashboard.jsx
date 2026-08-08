@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Plus, Calendar, ShoppingBag, Heart, MapPin, Trash, Check, Clock, User, X, PawPrint } from 'lucide-react';
+import { Plus, Calendar, ShoppingBag, Heart, MapPin, Trash, Check, Clock, User, X, PawPrint, Download } from 'lucide-react';
 import axios from 'axios';
 import PremiumButton from '../components/ui/PremiumButton.jsx';
 import { getFullImageUrl } from '../utils/imageHelper.js';
@@ -391,6 +391,42 @@ export default function BuyerDashboard() {
       toast.error(err.response?.data?.message || 'Failed to report dispute');
     }
   };
+
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
+
+  const handleDownloadInvoice = async (orderId) => {
+    try {
+      setDownloadingInvoiceId(orderId);
+      const token = localStorage.getItem('pawmart_accessToken') || accessToken;
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/orders/${orderId}/invoice`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      const invoiceNum = `INV-2026-${orderId.slice(-6).toUpperCase()}`;
+      link.setAttribute('download', `PawMart-Invoice-${invoiceNum}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Download complete.');
+    } catch (error) {
+      console.error('Invoice download failed:', error);
+      toast.error('Unable to download invoice. Please try again.');
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
+  };
+
 
   return (
     <div className="bg-background min-h-screen pt-28 pb-32">
@@ -943,8 +979,8 @@ export default function BuyerDashboard() {
                           </div>
                         ))}
                       </div>
-                      <div className="flex justify-between items-center pt-4 border-t border-black/[0.07]">
-                        <div>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t border-black/[0.07]">
+                        <div className="flex items-center gap-3">
                           {['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.status) && 
                            !order.orderItems?.some(item => ['SHIPPED', 'DELIVERED'].includes(item.status)) && (
                             <button 
@@ -959,9 +995,19 @@ export default function BuyerDashboard() {
                             </button>
                           )}
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-bold text-secondary text-sm">Total</span>
-                          <span className="font-outfit font-extrabold text-primary">{formatCurrency(order.total)}</span>
+                        <div className="flex flex-wrap items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-secondary text-sm">Total</span>
+                            <span className="font-outfit font-extrabold text-primary">{formatCurrency(order.total)}</span>
+                          </div>
+                          <button
+                            onClick={() => handleDownloadInvoice(order.id)}
+                            disabled={downloadingInvoiceId === order.id}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all disabled:opacity-50 shrink-0"
+                          >
+                            <Download size={14} />
+                            {downloadingInvoiceId === order.id ? 'Downloading...' : 'Download Invoice'}
+                          </button>
                         </div>
                       </div>
                     </div>

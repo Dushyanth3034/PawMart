@@ -515,6 +515,148 @@ export async function getSellerCoupons(req, res, next) {
   } catch (error) { next(error); }
 }
 
+export async function createSellerCoupon(req, res, next) {
+  try {
+    const { code, discount, isPercent, expiresAt, active, usageLimit, productIds } = req.body;
+    
+    if (!code || !code.trim()) {
+      return next(new AppError(400, 'Promo code is required.'));
+    }
+    const normalizedCode = code.trim().toUpperCase();
+
+    const numericDiscount = parseFloat(discount);
+    if (isNaN(numericDiscount) || numericDiscount <= 0) {
+      return next(new AppError(400, 'Discount value must be greater than 0.'));
+    }
+
+    if (isPercent && numericDiscount > 100) {
+      return next(new AppError(400, 'Percentage discount cannot exceed 100%.'));
+    }
+
+    const existing = await prisma.coupon.findUnique({
+      where: { code: normalizedCode }
+    });
+    if (existing) {
+      return next(new AppError(400, `Promo code "${normalizedCode}" already exists.`));
+    }
+
+    let validProductConnect = [];
+    if (Array.isArray(productIds) && productIds.length > 0) {
+      const sellerProducts = await prisma.product.findMany({
+        where: { id: { in: productIds }, sellerId: req.user.id },
+        select: { id: true }
+      });
+      validProductConnect = sellerProducts.map(p => ({ id: p.id }));
+    }
+
+    const defaultExpiry = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    const coupon = await prisma.coupon.create({
+      data: {
+        sellerId: req.user.id,
+        code: normalizedCode,
+        discount: numericDiscount,
+        isPercent: isPercent !== undefined ? !!isPercent : true,
+        expiresAt: defaultExpiry,
+        active: active !== undefined ? !!active : true,
+        usageLimit: usageLimit ? parseInt(usageLimit) : null,
+        products: {
+          connect: validProductConnect
+        }
+      },
+      include: {
+        products: { select: { id: true, name: true } }
+      }
+    });
+
+    res.status(201).json({ status: 'success', data: coupon });
+  } catch (error) { next(error); }
+}
+
+export async function updateSellerCoupon(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { code, discount, isPercent, expiresAt, active, usageLimit, productIds } = req.body;
+
+    const existingCoupon = await prisma.coupon.findUnique({
+      where: { id },
+      include: { products: true }
+    });
+
+    if (!existingCoupon || existingCoupon.sellerId !== req.user.id) {
+      return next(new AppError(403, 'Unauthorized access to promo code.'));
+    }
+
+    let normalizedCode = existingCoupon.code;
+    if (code && code.trim().toUpperCase() !== existingCoupon.code) {
+      normalizedCode = code.trim().toUpperCase();
+      const codeConflict = await prisma.coupon.findUnique({ where: { code: normalizedCode } });
+      if (codeConflict) {
+        return next(new AppError(400, `Promo code "${normalizedCode}" already exists.`));
+      }
+    }
+
+    const numericDiscount = discount !== undefined ? parseFloat(discount) : existingCoupon.discount;
+    if (isNaN(numericDiscount) || numericDiscount <= 0) {
+      return next(new AppError(400, 'Discount value must be greater than 0.'));
+    }
+
+    const isPercentVal = isPercent !== undefined ? !!isPercent : existingCoupon.isPercent;
+    if (isPercentVal && numericDiscount > 100) {
+      return next(new AppError(400, 'Percentage discount cannot exceed 100%.'));
+    }
+
+    let productSetData = undefined;
+    if (Array.isArray(productIds)) {
+      const sellerProducts = await prisma.product.findMany({
+        where: { id: { in: productIds }, sellerId: req.user.id },
+        select: { id: true }
+      });
+      productSetData = {
+        set: sellerProducts.map(p => ({ id: p.id }))
+      };
+    }
+
+    const updatedCoupon = await prisma.coupon.update({
+      where: { id },
+      data: {
+        code: normalizedCode,
+        discount: numericDiscount,
+        isPercent: isPercentVal,
+        expiresAt: expiresAt ? new Date(expiresAt) : existingCoupon.expiresAt,
+        active: active !== undefined ? !!active : existingCoupon.active,
+        usageLimit: usageLimit !== undefined ? (usageLimit ? parseInt(usageLimit) : null) : existingCoupon.usageLimit,
+        products: productSetData
+      },
+      include: {
+        products: { select: { id: true, name: true } }
+      }
+    });
+
+    res.json({ status: 'success', data: updatedCoupon });
+  } catch (error) { next(error); }
+}
+
+export async function deleteSellerCoupon(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    const existingCoupon = await prisma.coupon.findUnique({
+      where: { id }
+    });
+
+    if (!existingCoupon || existingCoupon.sellerId !== req.user.id) {
+      return next(new AppError(403, 'Unauthorized access to promo code.'));
+    }
+
+    await prisma.coupon.delete({
+      where: { id }
+    });
+
+    res.json({ status: 'success', message: 'Promo code deleted successfully.' });
+  } catch (error) { next(error); }
+}
+
 export async function getSellerReturns(req, res, next) {
   try {
     const returns = await prisma.returnRequest.findMany({

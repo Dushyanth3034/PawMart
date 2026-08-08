@@ -7,7 +7,7 @@ export async function createProduct(req, res, next) {
   try {
     const { 
       name, brand, categoryId, status, sku, shortDescription, description,
-      price, originalPrice, discountPercent, gst, currency,
+      price, originalPrice, discountPercent, gst, currency, promoCode, promoDiscount,
       weight, packageDimensions, shippingCharges, isFreeShipping, estimatedDeliveryDays,
       petType, breedCompatibility, ageGroup,
       seoTitle, seoDescription, searchKeywords,
@@ -20,6 +20,31 @@ export async function createProduct(req, res, next) {
     // Validate required fields
     if (!name || !categoryId || price === undefined || price === null || !images || images.length === 0) {
       return next(new AppError('Product name, categoryId, price, and at least one image are required', 400));
+    }
+
+    // Validate promo code & fixed discount
+    let cleanPromoCode = null;
+    let cleanPromoDiscount = null;
+
+    if (promoCode !== undefined && promoCode !== null) {
+      const str = String(promoCode).trim();
+      if (str.length > 0) cleanPromoCode = str;
+    }
+
+    if (promoDiscount !== undefined && promoDiscount !== null && promoDiscount !== '') {
+      const num = parseFloat(promoDiscount);
+      if (!isNaN(num) && num > 0) cleanPromoDiscount = num;
+      else if (!isNaN(num) && num < 0) return next(new AppError('Discount amount cannot be negative.', 400));
+    }
+
+    if (cleanPromoCode && !cleanPromoDiscount) {
+      return next(new AppError('Please enter a discount amount.', 400));
+    }
+    if (cleanPromoDiscount && !cleanPromoCode) {
+      return next(new AppError('Please enter a promo code.', 400));
+    }
+    if (cleanPromoDiscount && cleanPromoDiscount >= parseFloat(price)) {
+      return next(new AppError('Discount amount cannot exceed the product price.', 400));
     }
 
     const isPetListing = isPet !== undefined ? !!isPet : false;
@@ -80,6 +105,8 @@ export async function createProduct(req, res, next) {
           discountPercent: discountPercent ? parseFloat(discountPercent) : null,
           gst: gst ? parseFloat(gst) : null,
           currency: currency || 'INR',
+          promoCode: cleanPromoCode,
+          promoDiscount: cleanPromoDiscount,
           weight: weight ? parseFloat(weight) : null,
           packageDimensions,
           shippingCharges: shippingCharges ? parseFloat(shippingCharges) : null,
@@ -197,7 +224,7 @@ export async function updateProduct(req, res, next) {
 
     const { 
       name, brand, categoryId, status, sku, shortDescription, description,
-      price, originalPrice, discountPercent, gst, currency,
+      price, originalPrice, discountPercent, gst, currency, promoCode, promoDiscount,
       weight, packageDimensions, shippingCharges, isFreeShipping, estimatedDeliveryDays,
       petType, breedCompatibility, ageGroup,
       seoTitle, seoDescription, searchKeywords,
@@ -210,6 +237,31 @@ export async function updateProduct(req, res, next) {
     // Validate required fields
     if (!name || !categoryId || price === undefined || price === null || !images || images.length === 0) {
       return next(new AppError('Product name, categoryId, price, and at least one image are required', 400));
+    }
+
+    // Validate promo code & fixed discount
+    let cleanPromoCode = null;
+    let cleanPromoDiscount = null;
+
+    if (promoCode !== undefined && promoCode !== null) {
+      const str = String(promoCode).trim();
+      if (str.length > 0) cleanPromoCode = str;
+    }
+
+    if (promoDiscount !== undefined && promoDiscount !== null && promoDiscount !== '') {
+      const num = parseFloat(promoDiscount);
+      if (!isNaN(num) && num > 0) cleanPromoDiscount = num;
+      else if (!isNaN(num) && num < 0) return next(new AppError('Discount amount cannot be negative.', 400));
+    }
+
+    if (cleanPromoCode && !cleanPromoDiscount) {
+      return next(new AppError('Please enter a discount amount.', 400));
+    }
+    if (cleanPromoDiscount && !cleanPromoCode) {
+      return next(new AppError('Please enter a promo code.', 400));
+    }
+    if (cleanPromoDiscount && cleanPromoDiscount >= parseFloat(price)) {
+      return next(new AppError('Discount amount cannot exceed the product price.', 400));
     }
     if (categoryId) {
       const categoryExists = await prisma.category.findUnique({
@@ -231,6 +283,8 @@ export async function updateProduct(req, res, next) {
           discountPercent: discountPercent !== undefined ? (discountPercent ? parseFloat(discountPercent) : null) : undefined,
           gst: gst !== undefined ? (gst ? parseFloat(gst) : null) : undefined,
           currency,
+          promoCode: cleanPromoCode,
+          promoDiscount: cleanPromoDiscount,
           weight: weight !== undefined ? (weight ? parseFloat(weight) : null) : undefined,
           packageDimensions,
           shippingCharges: shippingCharges !== undefined ? (shippingCharges ? parseFloat(shippingCharges) : null) : undefined,

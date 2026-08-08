@@ -13,6 +13,9 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   getSellerCoupons,
+  createSellerCoupon,
+  updateSellerCoupon,
+  deleteSellerCoupon,
   getSellerReturns,
   getSellerPayouts,
   getSellerShipping,
@@ -59,7 +62,14 @@ router.get('/notifications', getSellerNotifications);
 router.patch('/notifications/read-all', markAllNotificationsRead);
 router.patch('/notifications/:id/read', markNotificationRead);
 
-router.get('/coupons', getSellerCoupons);
+router.route('/coupons')
+  .get(getSellerCoupons)
+  .post(createSellerCoupon);
+
+router.route('/coupons/:id')
+  .put(updateSellerCoupon)
+  .delete(deleteSellerCoupon);
+
 router.get('/returns', getSellerReturns);
 router.get('/payouts', getSellerPayouts);
 router.get('/shipping', getSellerShipping);

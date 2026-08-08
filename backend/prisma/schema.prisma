@@ -259,6 +259,10 @@ model Product {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Promo Code & Fixed INR Discount
+  promoCode     String?
+  promoDiscount Float?
+
   // Relations
   seller           User              @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
   category         Category          @relation(fields: [categoryId], references: [id])
@@ -271,10 +275,13 @@ model Product {
   cartItems        CartItem[]
   reviews          Review[]          @relation("ProductReviews")
   adoptionRequests AdoptionRequest[] @relation("PetAdoptions")
+  couponId         String?
+  coupon           Coupon?           @relation("ProductCoupon", fields: [couponId], references: [id], onDelete: SetNull)
 
   @@index([sellerId])
   @@index([categoryId])
   @@index([subcategoryId])
+  @@index([couponId])
 }
 
 model ProductImage {
@@ -454,7 +461,8 @@ model Coupon {
   usageCount  Int      @default(0)
   createdAt   DateTime @default(now())
 
-  seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  seller      User      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  products    Product[] @relation("ProductCoupon")
 
   @@index([sellerId])
 }
