@@ -51,7 +51,8 @@ export const searchProducts = async (req, res) => {
             providerProfile: true
           }
         },
-        category: true
+        category: true,
+        inventory: true
       }
     });
 
@@ -93,7 +94,8 @@ export const getProductById = async (req, res) => {
           }
         },
         category: true,
-        variants: true
+        variants: true,
+        inventory: true
       }
     });
 
