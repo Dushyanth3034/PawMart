@@ -158,11 +158,12 @@ export async function createRazorpayOrder(req, res, next) {
           include: { inventory: true }
         });
 
-        if (!product || product.status === 'OUT_OF_STOCK') {
+        const availableQty = product?.inventory ? product.inventory.quantity : 0;
+        if (!product || product.status === 'INACTIVE' || availableQty <= 0) {
           return next(new AppError(400, `Product ${product?.name || item.productId} is out of stock.`));
         }
-        if (product.inventory && product.inventory.quantity < item.quantity) {
-          return next(new AppError(400, `Not enough stock for ${product.name}. Only ${product.inventory.quantity} left.`));
+        if (availableQty < item.quantity) {
+          return next(new AppError(400, `Not enough stock for ${product.name}. Only ${availableQty} left.`));
         }
 
         const itemSubtotal = product.price * item.quantity;
@@ -175,9 +176,56 @@ export async function createRazorpayOrder(req, res, next) {
 
       let couponDiscount = 0;
       if (couponCode) {
-        const coupon = await prisma.coupon.findUnique({ where: { code: couponCode, active: true } });
-        if (coupon && coupon.expiresAt > new Date()) {
-          couponDiscount = coupon.isPercent ? (subtotal * coupon.discount) / 100 : coupon.discount;
+        const normalizedCode = couponCode.trim().toUpperCase();
+
+        // 1. Check Product-level fixed INR promo code
+        let productPromoDiscountTotal = 0;
+        for (const item of items) {
+          const prod = fetchedProducts.find(p => p.id === item.productId);
+          if (prod && prod.promoCode && prod.promoCode.trim().toUpperCase() === normalizedCode && prod.promoDiscount > 0) {
+            const perItemDiscount = Math.min(prod.promoDiscount, prod.price);
+            productPromoDiscountTotal += perItemDiscount * (item.quantity || 1);
+          }
+        }
+
+        if (productPromoDiscountTotal > 0) {
+          couponDiscount = Math.min(productPromoDiscountTotal, subtotal);
+        } else {
+          // 2. Check Coupon table promo code
+          const coupon = await prisma.coupon.findUnique({
+            where: { code: normalizedCode, active: true },
+            include: { products: { select: { id: true } } }
+          });
+
+          if (coupon && new Date(coupon.expiresAt) > new Date()) {
+            let applicableSubtotal = 0;
+            if (coupon.products && coupon.products.length > 0) {
+              const allowedProductIds = new Set(coupon.products.map(p => p.id));
+              for (const item of items) {
+                if (allowedProductIds.has(item.productId)) {
+                  const prod = fetchedProducts.find(p => p.id === item.productId);
+                  applicableSubtotal += (prod?.price || 0) * (item.quantity || 1);
+                }
+              }
+            } else {
+              for (const item of items) {
+                const prod = fetchedProducts.find(p => p.id === item.productId);
+                if (!prod || prod.sellerId === coupon.sellerId) {
+                  applicableSubtotal += (prod?.price || 0) * (item.quantity || 1);
+                }
+              }
+              if (applicableSubtotal === 0) applicableSubtotal = subtotal;
+            }
+
+            if (applicableSubtotal > 0) {
+              if (coupon.isPercent) {
+                couponDiscount = (applicableSubtotal * coupon.discount) / 100;
+              } else {
+                couponDiscount = coupon.discount;
+              }
+              couponDiscount = Math.min(couponDiscount, applicableSubtotal);
+            }
+          }
         }
       }
 
@@ -421,16 +469,17 @@ export async function verifyRazorpayPayment(req, res, next) {
             include: { inventory: true }
           });
 
-          if (!product || product.status === 'OUT_OF_STOCK') {
+          const availableQty = product?.inventory ? product.inventory.quantity : 0;
+          if (!product || product.status === 'INACTIVE' || availableQty <= 0) {
             throw new AppError(400, `Product ${product?.name || item.productId} is out of stock.`);
           }
 
           // Deduct main inventory
           if (product.inventory) {
-            if (product.inventory.quantity < item.quantity) {
-              throw new AppError(400, `Not enough stock for ${product.name}. Only ${product.inventory.quantity} left.`);
+            if (availableQty < item.quantity) {
+              throw new AppError(400, `Not enough stock for ${product.name}. Only ${availableQty} left.`);
             }
-            const newQty = product.inventory.quantity - item.quantity;
+            const newQty = availableQty - item.quantity;
             await tx.inventory.update({
               where: { id: product.inventory.id },
               data: { quantity: newQty }
@@ -448,9 +497,61 @@ export async function verifyRazorpayPayment(req, res, next) {
 
         let couponDiscount = 0;
         if (couponCode) {
-          const coupon = await tx.coupon.findUnique({ where: { code: couponCode, active: true } });
-          if (coupon && coupon.expiresAt > new Date()) {
-            couponDiscount = coupon.isPercent ? (subtotal * coupon.discount) / 100 : coupon.discount;
+          const normalizedCode = couponCode.trim().toUpperCase();
+
+          // 1. Check Product-level fixed INR promo code
+          let productPromoDiscountTotal = 0;
+          for (const item of items) {
+            const prod = fetchedProducts.find(p => p.id === item.productId);
+            if (prod && prod.promoCode && prod.promoCode.trim().toUpperCase() === normalizedCode && prod.promoDiscount > 0) {
+              const perItemDiscount = Math.min(prod.promoDiscount, prod.price);
+              productPromoDiscountTotal += perItemDiscount * (item.quantity || 1);
+            }
+          }
+
+          if (productPromoDiscountTotal > 0) {
+            couponDiscount = Math.min(productPromoDiscountTotal, subtotal);
+          } else {
+            // 2. Check Coupon table promo code
+            const coupon = await tx.coupon.findUnique({
+              where: { code: normalizedCode, active: true },
+              include: { products: { select: { id: true } } }
+            });
+
+            if (coupon && new Date(coupon.expiresAt) > new Date()) {
+              let applicableSubtotal = 0;
+              if (coupon.products && coupon.products.length > 0) {
+                const allowedProductIds = new Set(coupon.products.map(p => p.id));
+                for (const item of items) {
+                  if (allowedProductIds.has(item.productId)) {
+                    const prod = fetchedProducts.find(p => p.id === item.productId);
+                    applicableSubtotal += (prod?.price || 0) * (item.quantity || 1);
+                  }
+                }
+              } else {
+                for (const item of items) {
+                  const prod = fetchedProducts.find(p => p.id === item.productId);
+                  if (!prod || prod.sellerId === coupon.sellerId) {
+                    applicableSubtotal += (prod?.price || 0) * (item.quantity || 1);
+                  }
+                }
+                if (applicableSubtotal === 0) applicableSubtotal = subtotal;
+              }
+
+              if (applicableSubtotal > 0) {
+                if (coupon.isPercent) {
+                  couponDiscount = (applicableSubtotal * coupon.discount) / 100;
+                } else {
+                  couponDiscount = coupon.discount;
+                }
+                couponDiscount = Math.min(couponDiscount, applicableSubtotal);
+
+                await tx.coupon.update({
+                  where: { id: coupon.id },
+                  data: { usageCount: { increment: 1 } }
+                });
+              }
+            }
           }
         }
 
@@ -623,5 +724,106 @@ export async function handleRazorpayWebhook(req, res, next) {
   } catch (error) {
     console.error('[Razorpay Webhook Error]:', error);
     res.status(500).json({ status: 'error', message: error.message });
+  }
+}
+
+export async function validatePromoCode(req, res, next) {
+  try {
+    const { code, items } = req.body;
+
+    if (!code || !code.trim()) {
+      return next(new AppError(400, 'Please enter a promo code.'));
+    }
+
+    const normalizedCode = code.trim().toUpperCase();
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return next(new AppError(400, 'Cart items are required for promo validation.'));
+    }
+
+    const itemProductIds = items.map(i => i.productId || i.product?.id || (typeof i.id === 'string' && !i.id.startsWith('cart') ? i.id : undefined)).filter(Boolean);
+    const fetchedProducts = await prisma.product.findMany({
+      where: { id: { in: itemProductIds } }
+    });
+
+    let discountAmount = 0;
+    let appliedType = '';
+
+    // 1. Check Product-level fixed INR promo code
+    let productPromoDiscountTotal = 0;
+    for (const item of items) {
+      const pId = item.productId || item.product?.id || (typeof item.id === 'string' && !item.id.startsWith('cart') ? item.id : undefined);
+      const prod = fetchedProducts.find(p => p.id === pId);
+      if (prod && prod.promoCode && prod.promoCode.trim().toUpperCase() === normalizedCode && prod.promoDiscount > 0) {
+        const qty = item.quantity || 1;
+        const perItemDiscount = Math.min(prod.promoDiscount, prod.price);
+        productPromoDiscountTotal += perItemDiscount * qty;
+      }
+    }
+
+    if (productPromoDiscountTotal > 0) {
+      discountAmount = productPromoDiscountTotal;
+      appliedType = 'PRODUCT';
+    } else {
+      // 2. Check Coupon table promo code
+      const coupon = await prisma.coupon.findFirst({
+        where: { code: { equals: normalizedCode, mode: 'insensitive' }, active: true },
+        include: { products: { select: { id: true } } }
+      });
+
+      if (coupon && new Date(coupon.expiresAt) > new Date()) {
+        let applicableSubtotal = 0;
+        if (coupon.products && coupon.products.length > 0) {
+          const allowedProductIds = new Set(coupon.products.map(p => p.id));
+          for (const item of items) {
+            const pId = item.productId || item.product?.id;
+            if (allowedProductIds.has(pId)) {
+              const prod = fetchedProducts.find(p => p.id === pId);
+              applicableSubtotal += (prod?.price || 0) * (item.quantity || 1);
+            }
+          }
+        } else {
+          for (const item of items) {
+            const pId = item.productId || item.product?.id;
+            const prod = fetchedProducts.find(p => p.id === pId);
+            if (!prod || prod.sellerId === coupon.sellerId) {
+              applicableSubtotal += (prod?.price || 0) * (item.quantity || 1);
+            }
+          }
+        }
+
+        if (applicableSubtotal > 0) {
+          if (coupon.isPercent) {
+            discountAmount = (applicableSubtotal * coupon.discount) / 100;
+          } else {
+            discountAmount = coupon.discount;
+          }
+          discountAmount = Math.min(discountAmount, applicableSubtotal);
+          appliedType = 'COUPON';
+        }
+      }
+    }
+
+    if (discountAmount <= 0) {
+      const codeExistsOnProduct = await prisma.product.findFirst({
+        where: { promoCode: { equals: normalizedCode, mode: 'insensitive' } }
+      });
+
+      if (codeExistsOnProduct) {
+        return next(new AppError(400, 'Promo code is not available for the products in your cart.'));
+      }
+      return next(new AppError(400, 'Invalid promo code.'));
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        code: normalizedCode,
+        discountAmount,
+        type: appliedType
+      }
+    });
+  } catch (error) {
+    next(error);
   }
 }

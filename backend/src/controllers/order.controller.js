@@ -2,6 +2,7 @@ import { prisma } from '../services/prisma.service.js';
 import { AppError } from '../middleware/error.middleware.js';
 import { getOrCreateWallet } from './wallet.controller.js';
 import { getPlatformSettings } from '../config/platformSettings.js';
+import { generateInvoicePDF } from '../services/invoice.service.js';
 
 export async function createOrder(req, res, next) {
   try {
@@ -53,8 +54,9 @@ export async function createOrder(req, res, next) {
             }
           });
         } else {
-          // 1. Validate Product Status
-          if (existingProduct.status === 'OUT_OF_STOCK') {
+          // 1. Validate Product Status and Inventory Quantity
+          const availableQty = existingProduct.inventory ? existingProduct.inventory.quantity : 0;
+          if (existingProduct.status === 'INACTIVE' || availableQty <= 0) {
             throw new AppError(400, `${existingProduct.name} is currently out of stock.`);
           }
 
@@ -522,4 +524,55 @@ export async function disputeDelivery(req, res, next) {
     });
   } catch (error) { next(error); }
 }
+
+export async function downloadInvoice(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+    const { id: orderId } = req.params;
+
+    if (!orderId) {
+      return next(new AppError(400, 'Order ID is required.'));
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        buyer: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true }
+        },
+        address: true,
+        payment: true,
+        orderItems: {
+          include: {
+            product: {
+              select: { id: true, name: true, price: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return next(new AppError(404, 'Order not found.'));
+    }
+
+    // Security & Ownership Check: Buyer can only download their own invoice; Admin can download any.
+    if (order.buyerId !== userId && userRole !== 'ADMIN') {
+      return next(new AppError(403, 'Unauthorized. You can only download your own order invoices.'));
+    }
+
+    const invoiceNum = `INV-2026-${order.id.slice(-6).toUpperCase()}`;
+    const filename = `PawMart-Invoice-${invoiceNum}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    generateInvoicePDF(order, res);
+  } catch (error) {
+    console.error('Error in downloadInvoice:', error);
+    next(error);
+  }
+}
+
 

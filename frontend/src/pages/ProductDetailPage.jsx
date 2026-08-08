@@ -727,10 +727,10 @@ export default function ProductDetailPage() {
                 <PremiumButton 
                   variant="primary" 
                   onClick={handleAddToCart} 
-                  disabled={product.status === 'OUT_OF_STOCK' || activeStock <= 0}
+                  disabled={activeStock <= 0}
                   className="flex-grow !py-5 !text-lg !rounded-[24px]"
                 >
-                  {product.status === 'OUT_OF_STOCK' || activeStock <= 0 ? 'Out of Stock' : <><ShoppingBag size={20}/> Add to Cart</>}
+                  {activeStock <= 0 ? 'Out of Stock' : <><ShoppingBag size={20}/> Add to Cart</>}
                 </PremiumButton>
               )}
               <button 
@@ -1012,13 +1012,21 @@ export default function ProductDetailPage() {
                                <a href={product.seller.storeProfile.linkedin} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{product.seller.storeProfile.linkedin}</a>
                              </div>
                            )}
-                           {product.seller?.storeProfile?.youtube && (
-                             <div className="flex items-center gap-2 text-muted">
-                               <span className="text-secondary font-extrabold">YouTube:</span>
-                               <a href={product.seller.storeProfile.youtube} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{product.seller.storeProfile.youtube}</a>
-                             </div>
-                           )}
                          </div>
+
+                         {product.seller?.sellerBrands && product.seller.sellerBrands.length > 0 && (
+                           <div className="mt-6 pt-6 border-t border-black/5">
+                             <h5 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Brands We Sell</h5>
+                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                               {product.seller.sellerBrands.map(b => (
+                                 <div key={b.id} className="bg-surface border border-black/5 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                                   <img src={getFullImageUrl(b.logoUrl)} alt={b.name} className="h-10 w-full object-contain mb-1" />
+                                   <span className="text-[10px] font-bold text-secondary truncate w-full">{b.name}</span>
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         )}
                        </div>
                      )
                  )}

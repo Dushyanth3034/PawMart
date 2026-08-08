@@ -19,7 +19,14 @@ import {
   getSellerPerformance,
   uploadStoreImage,
   updateOrderItemStatus,
-  updateSellerInventory
+  updateSellerInventory,
+  getSellerBrands,
+  addSellerBrand,
+  updateSellerBrand,
+  deleteSellerBrand,
+  createSellerCoupon,
+  updateSellerCoupon,
+  deleteSellerCoupon
 } from '../controllers/seller.controller.js';
 import { createProduct, updateProduct, deleteProduct, uploadProductImagesEndpoint } from '../controllers/product.controller.js';
 import { uploadProfileImage, uploadProductImages } from '../middleware/upload.middleware.js';
@@ -54,6 +61,22 @@ router.route('/profile')
   .put(updateSellerProfile);
 
 router.post('/profile/upload', uploadProfileImage.single('image'), uploadStoreImage);
+
+router.route('/brands')
+  .get(getSellerBrands)
+  .post(addSellerBrand);
+
+router.route('/brands/:id')
+  .put(updateSellerBrand)
+  .delete(deleteSellerBrand);
+
+router.route('/coupons')
+  .get(getSellerCoupons)
+  .post(createSellerCoupon);
+
+router.route('/coupons/:id')
+  .put(updateSellerCoupon)
+  .delete(deleteSellerCoupon);
 
 router.get('/notifications', getSellerNotifications);
 router.patch('/notifications/read-all', markAllNotificationsRead);

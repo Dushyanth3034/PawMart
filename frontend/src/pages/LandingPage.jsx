@@ -266,7 +266,7 @@ export default function LandingPage() {
                         <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold tracking-wide">
                           {catName}
                         </div>
-                        {isAuthenticated && user?.role === 'BUYER' && !(prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0) && (
+                        {isAuthenticated && user?.role === 'BUYER' && !(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) && (
                           <button 
                             onClick={(e) => { e.preventDefault(); handleAddToCart(prod, e); }}
                             className="absolute bottom-4 right-4 w-12 h-12 bg-white text-secondary hover:bg-primary hover:text-white rounded-full flex items-center justify-center shadow-float transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
@@ -283,9 +283,9 @@ export default function LandingPage() {
                           </div>
                         </div>
                         <h3 className="font-bold text-white/90 line-clamp-2 leading-tight group-hover:text-white transition-colors mb-2">{prod.name}</h3>
-                        <div className={`flex items-center gap-2 text-xs font-semibold ${prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0 ? 'text-red-400' : 'text-white/60'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0 ? 'bg-red-400' : 'bg-success'}`}></span>
-                          {prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0 ? 'Out of Stock' : 'In Stock'}
+                        <div className={`flex items-center gap-2 text-xs font-semibold ${(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) ? 'text-red-400' : 'text-white/60'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) ? 'bg-red-400' : 'bg-success'}`}></span>
+                          {(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) ? 'Out of Stock' : 'In Stock'}
                         </div>
                       </div>
                     </GlassCard>
