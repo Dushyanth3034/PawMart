@@ -657,6 +657,85 @@ export async function deleteSellerCoupon(req, res, next) {
   } catch (error) { next(error); }
 }
 
+export async function getSellerBrands(req, res, next) {
+  try {
+    const brands = await prisma.sellerBrand.findMany({
+      where: { sellerId: req.user.id },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ status: 'success', data: brands });
+  } catch (error) { next(error); }
+}
+
+export async function addSellerBrand(req, res, next) {
+  try {
+    const { name, logoUrl, logoPublicId } = req.body;
+    if (!name || !name.trim()) {
+      return next(new AppError(400, 'Brand name is required.'));
+    }
+    if (!logoUrl) {
+      return next(new AppError(400, 'Brand logo is required.'));
+    }
+
+    const brand = await prisma.sellerBrand.create({
+      data: {
+        sellerId: req.user.id,
+        name: name.trim(),
+        logoUrl,
+        logoPublicId: logoPublicId || null
+      }
+    });
+
+    res.status(201).json({ status: 'success', data: brand });
+  } catch (error) { next(error); }
+}
+
+export async function updateSellerBrand(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { name, logoUrl, logoPublicId } = req.body;
+
+    const existingBrand = await prisma.sellerBrand.findUnique({
+      where: { id }
+    });
+
+    if (!existingBrand || existingBrand.sellerId !== req.user.id) {
+      return next(new AppError(403, 'Unauthorized access to brand.'));
+    }
+
+    const updatedBrand = await prisma.sellerBrand.update({
+      where: { id },
+      data: {
+        name: name ? name.trim() : existingBrand.name,
+        logoUrl: logoUrl || existingBrand.logoUrl,
+        logoPublicId: logoPublicId !== undefined ? logoPublicId : existingBrand.logoPublicId
+      }
+    });
+
+    res.json({ status: 'success', data: updatedBrand });
+  } catch (error) { next(error); }
+}
+
+export async function deleteSellerBrand(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    const existingBrand = await prisma.sellerBrand.findUnique({
+      where: { id }
+    });
+
+    if (!existingBrand || existingBrand.sellerId !== req.user.id) {
+      return next(new AppError(403, 'Unauthorized access to brand.'));
+    }
+
+    await prisma.sellerBrand.delete({
+      where: { id }
+    });
+
+    res.json({ status: 'success', message: 'Brand removed successfully.' });
+  } catch (error) { next(error); }
+}
+
 export async function getSellerReturns(req, res, next) {
   try {
     const returns = await prisma.returnRequest.findMany({
