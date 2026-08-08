@@ -1,31 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { updateQuantity, removeFromCartAPI, clearCart } from '../redux/cartSlice.js';
-import { Trash, ShoppingBag, ArrowRight, Tag, Minus, Plus } from 'lucide-react';
+import { Trash, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PremiumButton from '../components/ui/PremiumButton.jsx';
 import GlassCard from '../components/ui/GlassCard.jsx';
-import MinimalInput from '../components/ui/MinimalInput.jsx';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { getFullImageUrl } from '../utils/imageHelper.js';
 
 export default function CartPage() {
   const { items, subtotal } = useSelector((state) => state.cart);
   const dispatch = useDispatch();
-  const [couponCode, setCouponCode] = useState('');
-  const [discount, setDiscount] = useState(0);
-
-  const handleApplyCoupon = (e) => {
-    e.preventDefault();
-    if (couponCode.toUpperCase() === 'PAW10') {
-      setDiscount(subtotal * 0.1);
-    } else {
-      setDiscount(0);
-    }
-  };
-
-  const finalTotal = Math.max(0, subtotal - discount);
 
   return (
     <div className="bg-background min-h-screen pt-32 pb-24">
@@ -119,39 +105,12 @@ export default function CartPage() {
             <GlassCard hoverEffect={false} className="p-8 lg:sticky lg:top-32 !bg-surface border-black/[0.07]">
               <h3 className="text-2xl font-extrabold font-outfit mb-8">Order Summary</h3>
 
-              {/* Apply coupon */}
-              <div className="flex flex-col gap-3 mb-8">
-                <label className="text-xs font-bold text-muted uppercase tracking-widest">Promo Code</label>
-                <div className="flex gap-2">
-                  <MinimalInput
-                    id="coupon"
-                    type="text"
-                    placeholder="e.g. PAW10"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    className="flex-grow"
-                  />
-                  <PremiumButton variant="secondary" onClick={handleApplyCoupon} className="!py-0 h-14 !px-6 text-sm">
-                    Apply
-                  </PremiumButton>
-                </div>
-                {discount > 0 && (
-                   <span className="text-xs font-bold text-success flex items-center gap-1"><Tag size={12}/> 10% Discount applied!</span>
-                )}
-              </div>
-
               {/* Totals */}
               <div className="flex flex-col gap-4 text-sm font-medium mb-8">
                 <div className="flex justify-between text-secondary">
                   <span>Subtotal</span>
                   <span className="font-bold">{formatCurrency(subtotal)}</span>
                 </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-success">
-                    <span>Discount</span>
-                    <span className="font-bold">-{formatCurrency(discount)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-secondary">
                   <span>Shipping</span>
                   <span className="font-bold text-muted">Calculated at checkout</span>
@@ -159,7 +118,7 @@ export default function CartPage() {
                 <div className="h-px bg-black/[0.07] my-2" />
                 <div className="flex justify-between items-center text-secondary">
                   <span className="text-lg font-bold">Total</span>
-                  <span className="text-3xl font-extrabold font-outfit text-primary">{formatCurrency(finalTotal)}</span>
+                  <span className="text-3xl font-extrabold font-outfit text-primary">{formatCurrency(subtotal)}</span>
                 </div>
               </div>
 

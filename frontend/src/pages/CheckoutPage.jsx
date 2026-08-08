@@ -58,7 +58,7 @@ export default function CheckoutPage() {
         price: item.product?.price || 0
       }));
 
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/payment/validate-promo`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/payments/validate-promo`, {
         code: couponCode,
         items: payloadItems
       }, {
