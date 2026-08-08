@@ -24,8 +24,6 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
     discountPercent: '',
     gst: '',
     currency: 'INR',
-    promoCode: '',
-    promoDiscount: '',
     inventoryStock: '',
     weight: '',
     packageDimensions: '',
@@ -51,19 +49,9 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [breeds, setBreeds] = useState([]);
   const [ageGroups, setAgeGroups] = useState([]);
-  const [sellerCoupons, setSellerCoupons] = useState([]);
 
   React.useEffect(() => {
     if (isOpen) {
-      if (accessToken) {
-        axios.get(`${import.meta.env.VITE_API_URL}/seller/coupons`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          withCredentials: true
-        })
-        .then(res => setSellerCoupons(res.data.data || []))
-        .catch(err => console.error('Failed to fetch seller coupons', err));
-      }
-
       axios.get(`${import.meta.env.VITE_API_URL}/categories`)
         .then(res => {
           setCategories(res.data.data || []);
@@ -110,8 +98,6 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
         discountPercent: initialData.discountPercent || '',
         gst: initialData.gst || '',
         currency: initialData.currency || 'INR',
-        promoCode: initialData.promoCode || '',
-        promoDiscount: initialData.promoDiscount !== undefined && initialData.promoDiscount !== null ? initialData.promoDiscount : '',
         inventoryStock: initialData.inventory?.quantity || '',
         weight: initialData.weight || '',
         packageDimensions: initialData.packageDimensions || '',
@@ -143,7 +129,7 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
       // Reset form on open for creation
       setFormData({
         name: '', brand: '', categoryId: '', sku: '', status: 'DRAFT', shortDescription: '', description: '',
-        price: '', originalPrice: '', discountPercent: '', gst: '', currency: 'INR', promoCode: '', promoDiscount: '', inventoryStock: '', weight: '',
+        price: '', originalPrice: '', discountPercent: '', gst: '', currency: 'INR', inventoryStock: '', weight: '',
         packageDimensions: '', shippingCharges: '', isFreeShipping: false, estimatedDeliveryDays: '',
         petType: [], breedCompatibility: [], ageGroup: [], seoTitle: '', seoDescription: '', searchKeywords: []
       });
@@ -152,54 +138,6 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
       setActiveTab('basic');
     }
   }, [isOpen, initialData]);
-
-  const handleDeletePromo = async () => {
-    if (!window.confirm('Are you sure you want to delete this promo code?')) return;
-    
-    if (isEditMode && initialData?.id) {
-      try {
-        setLoading(true);
-        const payload = {
-          ...formData,
-          promoCode: null,
-          promoDiscount: null,
-          petType: ['Dog'],
-          breedCompatibility: Array.isArray(formData.breedCompatibility) ? formData.breedCompatibility : [],
-          ageGroup: Array.isArray(formData.ageGroup) ? formData.ageGroup : [],
-          searchKeywords: Array.isArray(formData.searchKeywords)
-            ? formData.searchKeywords.map(i => i?.trim()).filter(Boolean)
-            : [],
-          images,
-          variants: Array.isArray(variants) ? variants.map(({ id, ...rest }) => rest) : []
-        };
-
-        await axios.put(`${import.meta.env.VITE_API_URL}/seller/products/${initialData.id}`, payload, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          withCredentials: true
-        });
-
-        setFormData(prev => ({
-          ...prev,
-          promoCode: '',
-          promoDiscount: ''
-        }));
-        
-        toast.success('Promo code deleted permanently.');
-        if (onSuccess) onSuccess();
-      } catch (err) {
-        toast.error(err.response?.data?.message || 'Failed to delete promo code');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        promoCode: '',
-        promoDiscount: ''
-      }));
-      toast.success('Promo code cleared.');
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -296,16 +234,6 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
     }
     if (!images || images.length === 0) {
       return toast.error('Please upload at least one product image.');
-    }
-
-    if (formData.promoCode && (!formData.promoDiscount || parseFloat(formData.promoDiscount) <= 0)) {
-      return toast.error('Please enter a discount amount.');
-    }
-    if (formData.promoDiscount && parseFloat(formData.promoDiscount) > 0 && !formData.promoCode) {
-      return toast.error('Please enter a promo code.');
-    }
-    if (formData.promoDiscount && parseFloat(formData.promoDiscount) >= parseFloat(formData.price)) {
-      return toast.error('Discount amount cannot exceed the product price.');
     }
 
     try {
@@ -493,44 +421,6 @@ export default function ProductFormModal({ isOpen, onClose, accessToken, onSucce
                   <MinimalInput label="Original Price (MRP)" name="originalPrice" type="number" value={formData.originalPrice} onChange={handleChange} />
                   <MinimalInput label="Discount Percentage" name="discountPercent" type="number" value={formData.discountPercent} onChange={handleChange} />
                   <MinimalInput label="GST (%)" name="gst" type="number" value={formData.gst} onChange={handleChange} />
-
-                  <div className="col-span-2 pt-4 border-t border-black/[0.07]">
-                    <div className="flex justify-between items-center mb-4 ml-1">
-                      <h4 className="text-xs font-bold text-muted uppercase tracking-wider">
-                        PROMO CODE / DISCOUNT
-                      </h4>
-                      {(formData.promoCode || (formData.promoDiscount !== '' && formData.promoDiscount !== null && formData.promoDiscount !== undefined)) && (
-                        <button
-                          type="button"
-                          onClick={handleDeletePromo}
-                          className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 border border-red-200"
-                        >
-                          <Trash2 size={13} /> Delete Promo
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <MinimalInput
-                        label="Promo Code"
-                        name="promoCode"
-                        placeholder="Enter promo code"
-                        value={formData.promoCode || ''}
-                        onChange={handleChange}
-                      />
-                      <MinimalInput
-                        label="Discount Amount (₹)"
-                        name="promoDiscount"
-                        type="number"
-                        step="0.01"
-                        placeholder="Enter discount amount"
-                        value={formData.promoDiscount ?? ''}
-                        onChange={handleChange}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted ml-1 mt-2">
-                      Buyers can enter this promo code at checkout to receive a fixed ₹ discount.
-                    </p>
-                  </div>
                 </div>
 
                 <h3 className="text-lg font-bold text-secondary mb-6 border-b border-black/[0.07] pb-2">Inventory</h3>

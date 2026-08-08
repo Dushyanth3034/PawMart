@@ -15,7 +15,6 @@ const ProductManagement = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchProducts = async () => {
@@ -31,21 +30,6 @@ const ProductManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOpenAddModal = () => {
-    setSelectedProduct(null);
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEditModal = (product) => {
-    setSelectedProduct(product);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedProduct(null);
   };
 
   const handleDelete = async (productId) => {
@@ -79,7 +63,7 @@ const ProductManagement = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Product Management</h2>
         <PremiumButton 
-          onClick={handleOpenAddModal}
+          onClick={() => setIsModalOpen(true)}
           className="flex items-center space-x-2"
         >
           <Plus size={18} />
@@ -145,11 +129,7 @@ const ProductManagement = () => {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end space-x-3">
-                          <button 
-                            onClick={() => handleOpenEditModal(product)}
-                            className="text-gray-400 hover:text-indigo-600 transition-colors p-2 rounded-lg hover:bg-indigo-50"
-                            title="Edit Product"
-                          >
+                          <button className="text-gray-400 hover:text-indigo-600 transition-colors p-2 rounded-lg hover:bg-indigo-50">
                             <Edit2 size={18} />
                           </button>
                           <button onClick={() => handleDelete(product.id || product._id)} className="text-gray-400 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50">
@@ -179,11 +159,10 @@ const ProductManagement = () => {
 
       <ProductFormModal 
         isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
+        onClose={() => setIsModalOpen(false)} 
         accessToken={accessToken} 
-        initialData={selectedProduct}
         onSuccess={() => {
-          handleCloseModal();
+          setIsModalOpen(false);
           fetchProducts();
           // Dispatch live refresh event for dashboard overview
           window.dispatchEvent(new CustomEvent('seller-data-changed'));

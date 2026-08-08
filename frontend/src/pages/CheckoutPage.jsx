@@ -13,7 +13,6 @@ import { formatCurrency } from '../utils/formatCurrency.js';
 import { getFullImageUrl } from '../utils/imageHelper.js';
 import { loadRazorpaySDK } from '../utils/razorpayHelper.js';
 import axios from 'axios';
-import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
   const { items, subtotal } = useSelector((state) => state.cart);
@@ -37,53 +36,6 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [isCouponApplied, setIsCouponApplied] = useState(false);
-  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
-
-  const handleApplyPromo = async (e) => {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-    if (!couponCode || !couponCode.trim()) {
-      toast.error('Please enter a promo code');
-      return;
-    }
-    if (isCouponApplied) {
-      toast.success('Promo code is already applied');
-      return;
-    }
-    setIsValidatingPromo(true);
-    try {
-      const token = accessToken || localStorage.getItem('pawmart_accessToken');
-      const payloadItems = items.map(item => ({
-        productId: item.product?.id || item.product?._id || item.id,
-        quantity: item.quantity,
-        price: item.product?.price || 0
-      }));
-
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/payment/validate-promo`, {
-        code: couponCode,
-        items: payloadItems
-      }, {
-        headers: { Authorization: token ? `Bearer ${token}` : undefined },
-        withCredentials: true
-      });
-
-      const { code, discountAmount } = response.data.data;
-      setCouponCode(code);
-      setCouponDiscount(discountAmount);
-      setIsCouponApplied(true);
-      toast.success(`Promo code ${code} applied! Saved ₹${discountAmount}`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid promo code.');
-    } finally {
-      setIsValidatingPromo(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setIsCouponApplied(false);
-    setCouponDiscount(0);
-    setCouponCode('');
-    toast.success('Promo code removed');
-  };
 
   useEffect(() => {
     dispatch(fetchAddresses());
@@ -404,41 +356,34 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* Coupon promo UI */}
+                {/* Coupon apply */}
                 <div className="flex flex-col gap-2 mb-6">
-                  <label className="text-xs font-bold text-muted uppercase tracking-widest">Promo Code</label>
+                  <label className="text-xs font-bold text-muted uppercase tracking-widest">Coupon Code</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Enter promo code"
+                      placeholder="e.g. PAW10"
                       value={couponCode}
-                      disabled={isCouponApplied}
                       onChange={(e) => setCouponCode(e.target.value)}
-                      className="flex-grow h-11 border border-black/10 rounded-xl px-3 text-sm font-bold text-secondary bg-white focus:border-primary focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="flex-grow h-11 border border-black/5 rounded-xl px-3 text-sm font-bold text-secondary bg-white focus:border-primary focus:outline-none"
                     />
-                    {isCouponApplied ? (
-                      <button
-                        type="button"
-                        onClick={handleRemovePromo}
-                        className="bg-red-50 text-red-600 border border-red-200 px-4 rounded-xl font-bold text-xs hover:bg-red-100 transition-all h-11"
-                      >
-                        Remove
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleApplyPromo}
-                        disabled={isValidatingPromo}
-                        className="bg-secondary text-white px-4 rounded-xl font-bold text-xs hover:bg-secondary/90 transition-all h-11 disabled:opacity-50"
-                      >
-                        {isValidatingPromo ? 'Applying...' : 'Apply'}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (couponCode.toUpperCase() === 'PAW10') {
+                          setIsCouponApplied(true);
+                          setCouponDiscount(subtotal * 0.1);
+                        } else {
+                          alert('Invalid Coupon Code');
+                        }
+                      }}
+                      className="bg-secondary text-white px-4 rounded-xl font-bold text-xs hover:bg-secondary/90 transition-all h-11"
+                    >
+                      Apply
+                    </button>
                   </div>
                   {isCouponApplied && (
-                    <span className="text-xs font-bold text-success flex items-center gap-1">
-                      ✓ Promo code {couponCode} applied successfully! (-₹{couponDiscount})
-                    </span>
+                    <span className="text-xs font-bold text-success">10% Coupon applied successfully!</span>
                   )}
                 </div>
 

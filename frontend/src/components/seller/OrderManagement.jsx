@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
-import { Package, Truck, Check, Search, Filter, ShoppingBag, User, MapPin, Phone, Mail } from 'lucide-react';
+import { Package, Truck, Check, Search, Filter, ShoppingBag, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import GlassCard from '../ui/GlassCard';
 import MinimalInput from '../ui/MinimalInput';
@@ -71,16 +71,10 @@ const OrderManagement = () => {
       ? `${order.order.buyer.firstName} ${order.order.buyer.lastName}`.toLowerCase()
       : 'guest user';
     const productName = String(order.product?.name || '').toLowerCase();
-    const city = String(order.order?.address?.city || '').toLowerCase();
-    const street = String(order.order?.address?.street || '').toLowerCase();
-    const postalCode = String(order.order?.address?.postalCode || '').toLowerCase();
     
     return idString.toLowerCase().includes(searchTerm.toLowerCase()) || 
            buyerName.includes(searchTerm.toLowerCase()) ||
-           productName.includes(searchTerm.toLowerCase()) ||
-           city.includes(searchTerm.toLowerCase()) ||
-           street.includes(searchTerm.toLowerCase()) ||
-           postalCode.includes(searchTerm.toLowerCase());
+           productName.includes(searchTerm.toLowerCase());
   });
 
   return (
@@ -98,7 +92,7 @@ const OrderManagement = () => {
             </div>
             <MinimalInput
               type="text"
-              placeholder="Search by Order ID, Product, Customer, or City..."
+              placeholder="Search by Order ID, Product, or Customer..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full"
@@ -146,77 +140,42 @@ const OrderManagement = () => {
                       </div>
                     </div>
 
-                    {/* Middle Section (Buyer + Delivery Address + Product Details) */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
+                    {/* Middle Section (Buyer + Product Details) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
                       {/* Buyer info column */}
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Customer Details</h4>
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden border border-black/[0.07] bg-surface flex items-center justify-center text-primary font-bold shrink-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full overflow-hidden border border-black/[0.07] bg-surface flex items-center justify-center text-primary font-bold shrink-0">
                             {order.order?.buyer?.avatarUrl ? (
                               <img src={getFullImageUrl(order.order.buyer.avatarUrl)} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <User size={18} className="text-muted" />
+                              <User size={20} className="text-muted" />
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-extrabold text-secondary truncate">
+                          <div>
+                            <p className="text-base font-extrabold text-secondary">
                               {order.order?.buyer ? `${order.order.buyer.firstName} ${order.order.buyer.lastName}` : 'Guest User'}
                             </p>
-                            <p className="text-xs font-medium text-muted truncate flex items-center gap-1.5 mt-0.5" title={order.order?.buyer?.email}>
-                              <Mail size={12} className="shrink-0 text-gray-400" />
-                              <span className="truncate">{order.order?.buyer?.email || 'No email'}</span>
-                            </p>
-                            {order.order?.buyer?.phone && (
-                              <p className="text-xs font-medium text-muted truncate flex items-center gap-1.5 mt-0.5">
-                                <Phone size={12} className="shrink-0 text-gray-400" />
-                                <span>{order.order.buyer.phone}</span>
-                              </p>
-                            )}
+                            <p className="text-sm font-medium text-muted">{order.order?.buyer?.email || 'No email'}</p>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Delivery Address column */}
-                      <div className="space-y-3 bg-surface/60 border border-black/[0.04] p-4 rounded-2xl">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                          <MapPin size={14} className="text-primary shrink-0" />
-                          <span>Delivery Address</span>
-                        </div>
-                        {order.order?.address ? (
-                          <div className="text-xs space-y-1 text-secondary font-medium">
-                            <p className="font-bold text-secondary">
-                              {order.order.buyer ? `${order.order.buyer.firstName} ${order.order.buyer.lastName}` : 'Customer'}
-                            </p>
-                            <p className="text-muted leading-relaxed break-words">
-                              {order.order.address.street}
-                            </p>
-                            <p className="text-muted leading-relaxed">
-                              {order.order.address.city}, {order.order.address.state} - {order.order.address.postalCode}
-                            </p>
-                            <p className="text-muted font-semibold text-[11px] uppercase tracking-wider mt-1">
-                              {order.order.address.country || 'India'}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs font-medium text-muted italic">No delivery address provided.</p>
-                        )}
                       </div>
 
                       {/* Product details column */}
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Items Ordered</h4>
-                        <div className="flex gap-3">
-                          <div className="w-14 h-14 rounded-[14px] border border-black/[0.07] overflow-hidden bg-surface shrink-0 flex items-center justify-center">
+                        <div className="flex gap-4">
+                          <div className="w-16 h-16 rounded-[16px] border border-black/[0.07] overflow-hidden bg-surface shrink-0 flex items-center justify-center">
                             {order.product?.images?.[0]?.url ? (
                               <img src={getFullImageUrl(order.product.images[0].url)} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <Package size={20} className="text-muted" />
+                              <Package size={24} className="text-muted" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-extrabold text-secondary line-clamp-1">{order.product?.name || 'Unknown Product'}</p>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted font-bold uppercase tracking-wider">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted font-bold uppercase tracking-wider">
                               <span>Qty: {order.quantity}</span>
                               {order.selectedColor && <span>Color: {order.selectedColor}</span>}
                               {order.selectedSize && <span>Size: {order.selectedSize}</span>}

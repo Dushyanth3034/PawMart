@@ -3,8 +3,7 @@ import { protect } from '../middleware/auth.middleware.js';
 import { 
   createRazorpayOrder, 
   verifyRazorpayPayment, 
-  handleRazorpayWebhook,
-  validatePromoCode
+  handleRazorpayWebhook 
 } from '../controllers/payment.controller.js';
 
 const router = Router();
@@ -20,8 +19,5 @@ router.post('/razorpay/create-order', createRazorpayOrder);
 
 // 3. Verify Razorpay Payment Signature
 router.post('/razorpay/verify', verifyRazorpayPayment);
-
-// 4. Validate Promo Code / Coupon
-router.post('/validate-promo', validatePromoCode);
 
 export default router;

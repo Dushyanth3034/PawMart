@@ -7,7 +7,7 @@ export async function createProduct(req, res, next) {
   try {
     const { 
       name, brand, categoryId, status, sku, shortDescription, description,
-      price, originalPrice, discountPercent, gst, currency, promoCode, promoDiscount,
+      price, originalPrice, discountPercent, gst, currency,
       weight, packageDimensions, shippingCharges, isFreeShipping, estimatedDeliveryDays,
       petType, breedCompatibility, ageGroup,
       seoTitle, seoDescription, searchKeywords,
@@ -20,31 +20,6 @@ export async function createProduct(req, res, next) {
     // Validate required fields
     if (!name || !categoryId || price === undefined || price === null || !images || images.length === 0) {
       return next(new AppError('Product name, categoryId, price, and at least one image are required', 400));
-    }
-
-    // Validate promo code & fixed discount
-    let cleanPromoCode = null;
-    let cleanPromoDiscount = null;
-
-    if (promoCode !== undefined && promoCode !== null) {
-      const str = String(promoCode).trim();
-      if (str.length > 0) cleanPromoCode = str;
-    }
-
-    if (promoDiscount !== undefined && promoDiscount !== null && promoDiscount !== '') {
-      const num = parseFloat(promoDiscount);
-      if (!isNaN(num) && num > 0) cleanPromoDiscount = num;
-      else if (!isNaN(num) && num < 0) return next(new AppError('Discount amount cannot be negative.', 400));
-    }
-
-    if (cleanPromoCode && !cleanPromoDiscount) {
-      return next(new AppError('Please enter a discount amount.', 400));
-    }
-    if (cleanPromoDiscount && !cleanPromoCode) {
-      return next(new AppError('Please enter a promo code.', 400));
-    }
-    if (cleanPromoDiscount && cleanPromoDiscount >= parseFloat(price)) {
-      return next(new AppError('Discount amount cannot exceed the product price.', 400));
     }
 
     const isPetListing = isPet !== undefined ? !!isPet : false;
@@ -87,14 +62,6 @@ export async function createProduct(req, res, next) {
     // Generate a simple slug
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
 
-    let targetStatus = status || 'ACTIVE';
-    const parsedStock = inventoryStock !== undefined && inventoryStock !== null && inventoryStock !== '' ? parseInt(inventoryStock) : 0;
-    if (parsedStock > 0 && targetStatus === 'OUT_OF_STOCK') {
-      targetStatus = 'ACTIVE';
-    } else if (parsedStock === 0) {
-      targetStatus = 'OUT_OF_STOCK';
-    }
-
     const product = await prisma.$transaction(async (tx) => {
       // 1. Create Product
       const newProduct = await tx.product.create({
@@ -107,14 +74,12 @@ export async function createProduct(req, res, next) {
           shortDescription,
           description,
           sku: sku || `SKU-${Date.now()}`,
-          status: targetStatus,
+          status: status || 'DRAFT',
           price: parseFloat(price),
           originalPrice: originalPrice ? parseFloat(originalPrice) : null,
           discountPercent: discountPercent ? parseFloat(discountPercent) : null,
           gst: gst ? parseFloat(gst) : null,
           currency: currency || 'INR',
-          promoCode: cleanPromoCode,
-          promoDiscount: cleanPromoDiscount,
           weight: weight ? parseFloat(weight) : null,
           packageDimensions,
           shippingCharges: shippingCharges ? parseFloat(shippingCharges) : null,
@@ -232,7 +197,7 @@ export async function updateProduct(req, res, next) {
 
     const { 
       name, brand, categoryId, status, sku, shortDescription, description,
-      price, originalPrice, discountPercent, gst, currency, promoCode, promoDiscount,
+      price, originalPrice, discountPercent, gst, currency,
       weight, packageDimensions, shippingCharges, isFreeShipping, estimatedDeliveryDays,
       petType, breedCompatibility, ageGroup,
       seoTitle, seoDescription, searchKeywords,
@@ -246,31 +211,6 @@ export async function updateProduct(req, res, next) {
     if (!name || !categoryId || price === undefined || price === null || !images || images.length === 0) {
       return next(new AppError('Product name, categoryId, price, and at least one image are required', 400));
     }
-
-    // Validate promo code & fixed discount
-    let cleanPromoCode = null;
-    let cleanPromoDiscount = null;
-
-    if (promoCode !== undefined && promoCode !== null) {
-      const str = String(promoCode).trim();
-      if (str.length > 0) cleanPromoCode = str;
-    }
-
-    if (promoDiscount !== undefined && promoDiscount !== null && promoDiscount !== '') {
-      const num = parseFloat(promoDiscount);
-      if (!isNaN(num) && num > 0) cleanPromoDiscount = num;
-      else if (!isNaN(num) && num < 0) return next(new AppError('Discount amount cannot be negative.', 400));
-    }
-
-    if (cleanPromoCode && !cleanPromoDiscount) {
-      return next(new AppError('Please enter a discount amount.', 400));
-    }
-    if (cleanPromoDiscount && !cleanPromoCode) {
-      return next(new AppError('Please enter a promo code.', 400));
-    }
-    if (cleanPromoDiscount && cleanPromoDiscount >= parseFloat(price)) {
-      return next(new AppError('Discount amount cannot exceed the product price.', 400));
-    }
     if (categoryId) {
       const categoryExists = await prisma.category.findUnique({
         where: { id: categoryId }
@@ -280,27 +220,17 @@ export async function updateProduct(req, res, next) {
       }
     }
 
-    const parsedStock = inventoryStock !== undefined && inventoryStock !== null && inventoryStock !== '' ? parseInt(inventoryStock) : undefined;
-    let targetStatus = status;
-    if (parsedStock !== undefined && parsedStock > 0 && targetStatus === 'OUT_OF_STOCK') {
-      targetStatus = 'ACTIVE';
-    } else if (parsedStock !== undefined && parsedStock === 0) {
-      targetStatus = 'OUT_OF_STOCK';
-    }
-
     const product = await prisma.$transaction(async (tx) => {
       // Update Product
       const updated = await tx.product.update({
         where: { id },
         data: {
-          categoryId, name, brand, shortDescription, description, sku, status: targetStatus,
+          categoryId, name, brand, shortDescription, description, sku, status,
           price: price !== undefined ? parseFloat(price) : undefined,
           originalPrice: originalPrice !== undefined ? (originalPrice ? parseFloat(originalPrice) : null) : undefined,
           discountPercent: discountPercent !== undefined ? (discountPercent ? parseFloat(discountPercent) : null) : undefined,
           gst: gst !== undefined ? (gst ? parseFloat(gst) : null) : undefined,
           currency,
-          promoCode: cleanPromoCode,
-          promoDiscount: cleanPromoDiscount,
           weight: weight !== undefined ? (weight ? parseFloat(weight) : null) : undefined,
           packageDimensions,
           shippingCharges: shippingCharges !== undefined ? (shippingCharges ? parseFloat(shippingCharges) : null) : undefined,

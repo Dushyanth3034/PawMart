@@ -241,7 +241,7 @@ export default function ShopPage() {
                             <Heart size={16} className={wishlistItems.some(w => w.productId === prod.id) ? "fill-error text-error" : "text-error"} />
                           </button>
 
-                          {!(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) && (
+                          {!(prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0) && (
                             <button 
                               onClick={(e) => handleAddToCart(prod, e)}
                               className="absolute bottom-4 right-4 w-12 h-12 bg-primary hover:bg-[#CC5200] text-white rounded-full flex items-center justify-center shadow-float transition-all duration-300 transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
@@ -260,9 +260,9 @@ export default function ShopPage() {
                           </div>
                           <h3 className="font-bold text-secondary line-clamp-2 leading-tight flex-grow mb-4 group-hover:text-primary transition-colors">{prod.name}</h3>
                           
-                          <div className={`flex items-center gap-2 text-xs font-semibold ${(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) ? 'text-red-500' : 'text-muted/80'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) ? 'bg-red-500' : 'bg-success'}`}></span>
-                            {(prod.inventory ? prod.inventory.quantity <= 0 : (prod.stock !== undefined ? prod.stock <= 0 : prod.status === 'OUT_OF_STOCK')) ? 'Out of Stock' : 'In Stock'}
+                          <div className={`flex items-center gap-2 text-xs font-semibold ${prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0 ? 'text-red-500' : 'text-muted/80'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0 ? 'bg-red-500' : 'bg-success'}`}></span>
+                            {prod.status === 'OUT_OF_STOCK' || prod.inventory?.quantity === 0 || prod.stock === 0 ? 'Out of Stock' : 'In Stock'}
                           </div>
                         </div>
                       </GlassCard>

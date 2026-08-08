@@ -119,7 +119,6 @@ model User {
   transactionsAsProv   PaymentTransaction[]   @relation("ProviderTransactions")
   transactionsAsBuyer  PaymentTransaction[]   @relation("BuyerTransactions")
   wallet               Wallet?
-  sellerBrands         SellerBrand[]          @relation("SellerBrands")
 
   @@index([email])
 }
@@ -260,10 +259,6 @@ model Product {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Promo Code & Fixed INR Discount
-  promoCode     String?
-  promoDiscount Float?
-
   // Relations
   seller           User              @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
   category         Category          @relation(fields: [categoryId], references: [id])
@@ -276,13 +271,10 @@ model Product {
   cartItems        CartItem[]
   reviews          Review[]          @relation("ProductReviews")
   adoptionRequests AdoptionRequest[] @relation("PetAdoptions")
-  couponId         String?
-  coupon           Coupon?           @relation("ProductCoupon", fields: [couponId], references: [id], onDelete: SetNull)
 
   @@index([sellerId])
   @@index([categoryId])
   @@index([subcategoryId])
-  @@index([couponId])
 }
 
 model ProductImage {
@@ -463,7 +455,6 @@ model Coupon {
   createdAt   DateTime @default(now())
 
   seller      User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  products    Product[] @relation("ProductCoupon")
 
   @@index([sellerId])
 }
@@ -703,20 +694,6 @@ model SellerStoreProfile {
   updatedAt        DateTime @updatedAt
 
   seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-}
-
-model SellerBrand {
-  id           String   @id @default(uuid())
-  sellerId     String
-  name         String
-  logoUrl      String
-  logoPublicId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  seller       User     @relation("SellerBrands", fields: [sellerId], references: [id], onDelete: Cascade)
-
-  @@index([sellerId])
 }
 
 model ProviderStoreProfile {
